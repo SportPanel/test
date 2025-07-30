@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <title>Tracker</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+    }
+    #mapContainer {
+      position: relative;
+      width: 1060px;
+      height: 600px;
+      background: url('track.png') no-repeat center center;
+      background-size: contain;
+      margin: auto;
+    }
+    .dot {
+      position: absolute;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      background-color: red;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="mapContainer">
+    <div class="dot" id="runner"></div>
+  </div>
+
+  <script src="trackPoints.js"></script>
+  <script>
+    const runner = document.getElementById("runner");
+    const mapContainer = document.getElementById("mapContainer");
+
+    const lapDuration = 60 * 60 * 1000; // 1 godzina = 3600000 ms
+    const startTime = new Date("2025-07-30T08:00:00+02:00").getTime(); // 👈 zmień na godzinę startu biegu
+    const totalPoints = trackPoints.length;
+
+    function interpolate(points, progress) {
+      const total = points.length - 1;
+      const index = progress * total;
+      const lower = Math.floor(index);
+      const upper = Math.min(lower + 1, total);
+      const frac = index - lower;
+
+      const [x1, y1] = points[lower];
+      const [x2, y2] = points[upper];
+
+      return [
+        x1 + (x2 - x1) * frac,
+        y1 + (y2 - y1) * frac
+      ];
+    }
+
+    function moveDot(dot, progress) {
+      const [x, y] = interpolate(trackPoints, progress);
+      dot.style.left = `${x}px`;
+      dot.style.top = `${y}px`;
+    }
+
+    function animateRunner() {
+      const now = Date.now();
+      const timeElapsed = now - startTime;
+
+      // Liczba ukończonych pętli
+      const lapsCompleted = Math.floor(timeElapsed / lapDuration);
+      const lapProgress = (timeElapsed % lapDuration) / lapDuration;
+
+      // Oblicz punkt na aktualnej pętli
+      const overallProgress = (lapsCompleted + lapProgress);
+      moveDot(runner, (overallProgress % 1)); // porusza się po torze
+      requestAnimationFrame(animateRunner);
+    }
+
+    animateRunner();
+  </script>
+</body>
+</html>
