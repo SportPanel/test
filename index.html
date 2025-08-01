@@ -1,83 +1,469 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <title>Tracker</title>
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-    }
-    #mapContainer {
-      position: relative;
-      width: 1060px;
-      height: 600px;
-      background: url('track.png') no-repeat center center;
-      background-size: contain;
-      margin: auto;
-    }
-    .dot {
-      position: absolute;
-      width: 15px;
-      height: 15px;
-      border-radius: 50%;
-      background-color: red;
-      transform: translate(-50%, -50%);
-      pointer-events: none;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BackYard Ultra Warmia - Animacja Trasy</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #f0f0f0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .map-container {
+            position: relative;
+            margin: 20px 0;
+            border: 2px solid #ccc;
+            border-radius: 8px;
+            overflow: hidden;
+            height: 600px;
+            background: #e8f5e8;
+        }
+        #mapImage {
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: contain;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+}
+        .runner-dot {
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            background: radial-gradient(circle, #ff4444, #cc0000);
+            border: 3px solid white;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        .runner-dot.pulse {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.3); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        .info {
+            display: flex;
+            gap: 20px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        .info-item {
+            background: #e8f4fd;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border-left: 4px solid #2196F3;
+        }
+        .info-item strong {
+            color: #1976D2;
+        }
+        .status {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+        }
+        .track-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .description {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #856404;
+        }
+    </style>
 </head>
 <body>
-  <div id="mapContainer">
-    <div class="dot" id="runner"></div>
-  </div>
+    <div class="container">
+        <h1>🏃‍♂️ BackYard Ultra Warmia 🏃‍♀️</h1>
+        
+        <div class="description">
+            <strong>Animacja na żywo:</strong> Kropka automatycznie synchronizuje się z czasem rzeczywistym. 
+            Co godzinę o pełnych godzinach (8:00, 9:00, 10:00...) startuje nowa runda. 
+            Bieg trwa 50 minut, następnie 10 minut czekania na mecie.
+        </div>
 
-  <script src="trackPoints.js"></script>
-  <script>
-    const runner = document.getElementById("runner");
-    const mapContainer = document.getElementById("mapContainer");
+        <div class="info">
+            <div class="info-item">
+                <strong>Aktualny czas:</strong> <span id="currentTime">--:--</span>
+            </div>
+            <div class="info-item">
+                <strong>Status:</strong> <span id="status" class="status">Ładowanie...</span>
+            </div>
+            <div class="info-item">
+                <strong>Runda:</strong> <span id="roundNumber">-</span>
+            </div>
+            <div class="info-item">
+                <strong>Czas w rundzie:</strong> <span id="roundTime">--:--</span>
+            </div>
+            <div class="info-item">
+                <strong>Postęp trasy:</strong> <span id="progress">-%</span>
+            </div>
+        </div>
 
-    const lapDuration = 60 * 60 * 1000; // 1 godzina = 3600000 ms
-    const startTime = new Date("2025-07-30T08:00:00+02:00").getTime(); // 👈 zmień na godzinę startu biegu
-    const totalPoints = trackPoints.length;
+        <div class="map-container">
+    <img id="mapImage" src="mapa.jpg" alt="Mapa trasy BackYard Ultra Warmia">
+    <div class="runner-dot" id="runnerDot"></div>
+    <canvas class="track-line" id="trackCanvas"></canvas>
+</div>
+    </div>
 
-    function interpolate(points, progress) {
-      const total = points.length - 1;
-      const index = progress * total;
-      const lower = Math.floor(index);
-      const upper = Math.min(lower + 1, total);
-      const frac = index - lower;
+    <script>
+        // Dane trasy z GPX
+        const trackPoints = [
+            {lat: 53.695350000000005, lon: 20.519170000000003},
+            {lat: 53.695640000000004, lon: 20.51951},
+            {lat: 53.695510000000006, lon: 20.51977},
+            {lat: 53.69543, lon: 20.519840000000002},
+            {lat: 53.69509000000001, lon: 20.521220000000003},
+            {lat: 53.695060000000005, lon: 20.521630000000002},
+            {lat: 53.694860000000006, lon: 20.52248},
+            {lat: 53.69502000000001, lon: 20.52276},
+            {lat: 53.695240000000005, lon: 20.52335},
+            {lat: 53.69523, lon: 20.523590000000002},
+            {lat: 53.69512, lon: 20.5238},
+            {lat: 53.69494, lon: 20.52391},
+            {lat: 53.69485, lon: 20.52411},
+            {lat: 53.69467, lon: 20.524160000000002},
+            {lat: 53.694210000000005, lon: 20.524440000000002},
+            {lat: 53.693670000000004, lon: 20.524990000000003},
+            {lat: 53.69304, lon: 20.52588},
+            {lat: 53.692690000000006, lon: 20.52646},
+            {lat: 53.692220000000006, lon: 20.52689},
+            {lat: 53.691900000000004, lon: 20.526940000000003},
+            {lat: 53.69135000000001, lon: 20.526790000000002},
+            {lat: 53.691340000000004, lon: 20.526780000000002},
+            {lat: 53.690850000000005, lon: 20.526470000000003},
+            {lat: 53.69051, lon: 20.52615},
+            {lat: 53.690180000000005, lon: 20.525070000000003},
+            {lat: 53.68988, lon: 20.52393},
+            {lat: 53.68958000000001, lon: 20.52305},
+            {lat: 53.6895, lon: 20.5228},
+            {lat: 53.68914500312621, lon: 20.521939992861427},
+            {lat: 53.688790000000004, lon: 20.52108},
+            {lat: 53.688545002007835, lon: 20.520394996164885},
+            {lat: 53.688300000000005, lon: 20.519710000000003},
+            {lat: 53.688, lon: 20.51829},
+            {lat: 53.68757, lon: 20.51752},
+            {lat: 53.68695, lon: 20.517020000000002},
+            {lat: 53.68659, lon: 20.51667},
+            {lat: 53.686260000000004, lon: 20.516460000000002},
+            {lat: 53.686020000000006, lon: 20.51621},
+            {lat: 53.685860000000005, lon: 20.5161},
+            {lat: 53.68518, lon: 20.51619},
+            {lat: 53.684450000000005, lon: 20.51619},
+            {lat: 53.68422, lon: 20.51601},
+            {lat: 53.683733341113275, lon: 20.515046644502046},
+            {lat: 53.683246674497155, lon: 20.514083311269136},
+            {lat: 53.68276, lon: 20.51312},
+            {lat: 53.682770000000005, lon: 20.51314},
+            {lat: 53.68260000000001, lon: 20.512240000000002},
+            {lat: 53.682390000000005, lon: 20.511300000000002},
+            {lat: 53.68258, lon: 20.51057},
+            {lat: 53.68309000000001, lon: 20.51004},
+            {lat: 53.6837, lon: 20.508940000000003},
+            {lat: 53.684180000000005, lon: 20.50842},
+            {lat: 53.68487000645806, lon: 20.507540028827332},
+            {lat: 53.68556000646658, lon: 20.50666002881708},
+            {lat: 53.68625, lon: 20.50578},
+            {lat: 53.68674000000001, lon: 20.504530000000003},
+            {lat: 53.68730000307852, lon: 20.50367001143948},
+            {lat: 53.68786000000001, lon: 20.50281},
+            {lat: 53.688050000000004, lon: 20.50233},
+            {lat: 53.68806000000001, lon: 20.50232},
+            {lat: 53.68815000000001, lon: 20.50204},
+            {lat: 53.68815000000001, lon: 20.50194},
+            {lat: 53.688020005277544, lon: 20.500814996589174},
+            {lat: 53.68789, lon: 20.49969},
+            {lat: 53.68791, lon: 20.49903},
+            {lat: 53.68795000000001, lon: 20.498510000000003},
+            {lat: 53.688030000000005, lon: 20.498130000000003},
+            {lat: 53.68816, lon: 20.49772},
+            {lat: 53.68858000098066, lon: 20.497265004410153},
+            {lat: 53.68900000000001, lon: 20.49681},
+            {lat: 53.68919, lon: 20.496730000000003},
+            {lat: 53.689310000000006, lon: 20.496570000000002},
+            {lat: 53.68909000000001, lon: 20.49624},
+            {lat: 53.68898000000001, lon: 20.496000000000002},
+            {lat: 53.68894, lon: 20.49586},
+            {lat: 53.68894, lon: 20.495780000000003},
+            {lat: 53.68898000000001, lon: 20.495620000000002},
+            {lat: 53.68933000152781, lon: 20.49504500453167},
+            {lat: 53.68968, lon: 20.494470000000003},
+            {lat: 53.69001, lon: 20.494120000000002},
+            {lat: 53.690000000000005, lon: 20.494130000000002},
+            {lat: 53.690650000000005, lon: 20.49378},
+            {lat: 53.691010000000006, lon: 20.493720000000003},
+            {lat: 53.691570000000006, lon: 20.49369},
+            {lat: 53.69167, lon: 20.4937},
+            {lat: 53.69180000000001, lon: 20.493630000000003},
+            {lat: 53.69189000000001, lon: 20.49378},
+            {lat: 53.69207, lon: 20.494000000000003},
+            {lat: 53.69249000000001, lon: 20.494390000000003},
+            {lat: 53.692980000000006, lon: 20.495060000000002},
+            {lat: 53.69355, lon: 20.49558},
+            {lat: 53.693830000000005, lon: 20.495900000000002},
+            {lat: 53.69382, lon: 20.495890000000003},
+            {lat: 53.69413, lon: 20.496450000000003},
+            {lat: 53.694810000000004, lon: 20.49724},
+            {lat: 53.69505, lon: 20.49764},
+            {lat: 53.69548, lon: 20.498260000000002},
+            {lat: 53.6959, lon: 20.498720000000002},
+            {lat: 53.69603000000001, lon: 20.49904},
+            {lat: 53.696110000000004, lon: 20.499470000000002},
+            {lat: 53.69624, lon: 20.499950000000002},
+            {lat: 53.696290000000005, lon: 20.500210000000003},
+            {lat: 53.69626, lon: 20.50109},
+            {lat: 53.69633, lon: 20.50214},
+            {lat: 53.696450000000006, lon: 20.502660000000002},
+            {lat: 53.69662, lon: 20.50307},
+            {lat: 53.69702, lon: 20.503800000000002},
+            {lat: 53.69718, lon: 20.50419},
+            {lat: 53.69729, lon: 20.50438},
+            {lat: 53.697430000000004, lon: 20.504540000000002},
+            {lat: 53.69764000000001, lon: 20.504730000000002},
+            {lat: 53.69794, lon: 20.504980000000003},
+            {lat: 53.698240000000006, lon: 20.505170000000003},
+            {lat: 53.69881, lon: 20.50543},
+            {lat: 53.69906, lon: 20.50534},
+            {lat: 53.6993, lon: 20.505360000000003},
+            {lat: 53.699470000000005, lon: 20.505460000000003},
+            {lat: 53.699600000000004, lon: 20.505670000000002},
+            {lat: 53.69961000000001, lon: 20.50569},
+            {lat: 53.699540000000006, lon: 20.50591},
+            {lat: 53.69950000000001, lon: 20.506110000000003},
+            {lat: 53.69952000000001, lon: 20.506330000000002},
+            {lat: 53.699560000000005, lon: 20.50653},
+            {lat: 53.700010000000006, lon: 20.50768},
+            {lat: 53.69971, lon: 20.50805},
+            {lat: 53.69961000000001, lon: 20.508470000000003},
+            {lat: 53.69959000000001, lon: 20.508740000000003},
+            {lat: 53.699470000000005, lon: 20.50881},
+            {lat: 53.69933, lon: 20.50944},
+            {lat: 53.69919, lon: 20.51019},
+            {lat: 53.699215004116176, lon: 20.51118499917092},
+            {lat: 53.69924, lon: 20.51218},
+            {lat: 53.6990950045266, lon: 20.513225003746182},
+            {lat: 53.69895, lon: 20.514270000000003},
+            {lat: 53.69895, lon: 20.514940000000003},
+            {lat: 53.69888, lon: 20.515330000000002},
+            {lat: 53.69881, lon: 20.51557},
+            {lat: 53.69881, lon: 20.51558},
+            {lat: 53.698460000000004, lon: 20.515900000000002},
+            {lat: 53.698330000000006, lon: 20.5162},
+            {lat: 53.69825, lon: 20.5163},
+            {lat: 53.69785, lon: 20.51661},
+            {lat: 53.69756, lon: 20.51687},
+            {lat: 53.697250000000004, lon: 20.516990000000003},
+            {lat: 53.696540000000006, lon: 20.51698},
+            {lat: 53.69646, lon: 20.516900000000003},
+            {lat: 53.696310000000004, lon: 20.5168},
+            {lat: 53.696130000000004, lon: 20.516640000000002},
+            {lat: 53.69595, lon: 20.51661},
+            {lat: 53.695780000000006, lon: 20.51677},
+            {lat: 53.69563, lon: 20.517110000000002},
+            {lat: 53.69523500078555, lon: 20.517570004427643},
+            {lat: 53.694840000000006, lon: 20.518030000000003},
+            {lat: 53.69485, lon: 20.51802},
+            {lat: 53.694810000000004, lon: 20.518250000000002},
+            {lat: 53.69482000000001, lon: 20.51856},
+            {lat: 53.694840000000006, lon: 20.518620000000002},
+            {lat: 53.69501, lon: 20.518780000000003},
+            {lat: 53.6953, lon: 20.51912}
+        ];
 
-      const [x1, y1] = points[lower];
-      const [x2, y2] = points[upper];
+        // Elementy DOM
+        const runnerDot = document.getElementById('runnerDot');
+        const canvas = document.getElementById('trackCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Elementy interfejsu
+        const statusEl = document.getElementById('status');
+        const roundNumberEl = document.getElementById('roundNumber');
+        const roundTimeEl = document.getElementById('roundTime');
+        const progressEl = document.getElementById('progress');
+        const currentTimeEl = document.getElementById('currentTime');
 
-      return [
-        x1 + (x2 - x1) * frac,
-        y1 + (y2 - y1) * frac
-      ];
-    }
+        let animationFrame;
 
-    function moveDot(dot, progress) {
-      const [x, y] = interpolate(trackPoints, progress);
-      dot.style.left = `${x}px`;
-      dot.style.top = `${y}px`;
-    }
+        // Funkcje mapowania współrzędnych
+        function setupCanvas() {
+            const container = document.querySelector('.map-container');
+            canvas.width = container.offsetWidth;
+            canvas.height = container.offsetHeight;
+        }
 
-    function animateRunner() {
-      const now = Date.now();
-      const timeElapsed = now - startTime;
+        function latLonToPixel(lat, lon) {
+            // Zakres współrzędnych z GPX
+            const minLat = 53.682390000000005;
+            const maxLat = 53.700010000000006;
+            const minLon = 20.493630000000003;
+            const maxLon = 20.526940000000003;
+            
+            // Mapowanie na obszar canvas z marginesem
+            const margin = 50;
+            const width = canvas.width - 2 * margin;
+            const height = canvas.height - 2 * margin;
+            
+            const x = margin + ((lon - minLon) / (maxLon - minLon)) * width;
+            const y = margin + height - ((lat - minLat) / (maxLat - minLat)) * height;
+            
+            return { x, y };
+        }
 
-      // Liczba ukończonych pętli
-      const lapsCompleted = Math.floor(timeElapsed / lapDuration);
-      const lapProgress = (timeElapsed % lapDuration) / lapDuration;
+        function drawTrack() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Rysuj trasę
+            ctx.strokeStyle = '#ff6600';
+            ctx.lineWidth = 4;
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            
+            trackPoints.forEach((point, index) => {
+                const pixel = latLonToPixel(point.lat, point.lon);
+                if (index === 0) {
+                    ctx.moveTo(pixel.x, pixel.y);
+                } else {
+                    ctx.lineTo(pixel.x, pixel.y);
+                }
+            });
+            
+            ctx.stroke();
+            
+            // Zaznacz start/metę na początku trasy (tam gdzie kropka startuje)
+            const startPixel = latLonToPixel(trackPoints[0].lat, trackPoints[0].lon);
+            ctx.fillStyle = '#ff4444';
+            ctx.beginPath();
+            ctx.arc(startPixel.x, startPixel.y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+            
+            // Biała ramka wokół startu
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
 
-      // Oblicz punkt na aktualnej pętli
-      const overallProgress = (lapsCompleted + lapProgress);
-      moveDot(runner, (overallProgress % 1)); // porusza się po torze
-      requestAnimationFrame(animateRunner);
-    }
+        function updateRunnerPosition(progress) {
+            if (progress >= 1) progress = 0.999; // Zapobiega wykroczeniu poza trasę
+            
+            const pointIndex = progress * (trackPoints.length - 1);
+            const index = Math.floor(pointIndex);
+            const fraction = pointIndex - index;
+            
+            const currentPoint = trackPoints[index];
+            const nextPoint = trackPoints[Math.min(index + 1, trackPoints.length - 1)];
+            
+            // Interpolacja między punktami
+            const lat = currentPoint.lat + (nextPoint.lat - currentPoint.lat) * fraction;
+            const lon = currentPoint.lon + (nextPoint.lon - currentPoint.lon) * fraction;
+            
+            const pixel = latLonToPixel(lat, lon);
+            
+            runnerDot.style.left = pixel.x + 'px';
+            runnerDot.style.top = pixel.y + 'px';
+            runnerDot.style.display = 'block';
+        }
 
-    animateRunner();
-  </script>
+        function formatTime(seconds) {
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateDisplay() {
+            const now = new Date();
+            
+            // Wyświetl aktualny czas
+            const timeString = now.toLocaleTimeString('pl-PL', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                second: '2-digit'
+            });
+            currentTimeEl.textContent = timeString;
+            
+            // Oblicz minuty od pełnej godziny
+            const minutesFromHour = now.getMinutes();
+            const secondsFromHour = now.getSeconds();
+            const totalSecondsFromHour = minutesFromHour * 60 + secondsFromHour;
+            
+            // Każda runda trwa 60 minut: 50 min biegu + 10 min przerwy  
+            const runDurationSeconds = 50 * 60;   // 50 minut w sekundach
+            const waitDurationSeconds = 10 * 60;  // 10 minut w sekundach
+            
+            // Aktualny numer rundy (od startu dnia)
+            const roundsSinceStart = Math.floor(now.getHours()) + 1;
+            roundNumberEl.textContent = roundsSinceStart;
+            
+            if (totalSecondsFromHour < runDurationSeconds) {
+                // Faza biegu (0-50 minut)
+                const runProgress = totalSecondsFromHour / runDurationSeconds;
+                updateRunnerPosition(runProgress);
+                statusEl.textContent = "Biegnie! 🏃‍♂️";
+                runnerDot.classList.remove('pulse');
+                progressEl.textContent = Math.round(runProgress * 100) + '%';
+                
+                // Pokaż czas w rundzie
+                const timeInRun = formatTime(totalSecondsFromHour);
+                roundTimeEl.textContent = timeInRun;
+                
+            } else {
+                // Faza oczekiwania na mecie (50-60 minut)
+                updateRunnerPosition(0); // Pozycja startu/mety
+                statusEl.textContent = "Czeka na mecie ⏰";
+                runnerDot.classList.add('pulse');
+                progressEl.textContent = "100% - Czeka";
+                
+                // Pokaż czas oczekiwania
+                const waitTime = totalSecondsFromHour - runDurationSeconds;
+                const timeInWait = formatTime(waitTime);
+                roundTimeEl.textContent = "Czeka: " + timeInWait;
+            }
+            
+            animationFrame = requestAnimationFrame(updateDisplay);
+        }
+
+        // Obsługa zmiany rozmiaru okna
+        window.addEventListener('resize', () => {
+            setupCanvas();
+            drawTrack();
+        });
+
+        // Inicjalizacja
+        window.addEventListener('load', () => {
+            setupCanvas();
+            drawTrack();
+            updateDisplay();
+        });
+    </script>
 </body>
 </html>
