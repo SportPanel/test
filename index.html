@@ -1,469 +1,515 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BackYard Ultra Warmia - Animacja Trasy</title>
-    <style>
-        body {
-            margin: 0;
-            padding: 20px;
-            font-family: Arial, sans-serif;
-            background: #f0f0f0;
-        }
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        .map-container {
-            position: relative;
-            margin: 20px 0;
-            border: 2px solid #ccc;
-            border-radius: 8px;
-            overflow: hidden;
-            height: 600px;
-            background: #e8f5e8;
-        }
-        #mapImage {
-    width: 100%;
-    height: 100%;
-    display: block;
-    object-fit: contain;
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 1;
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Zegar Backyard</title>
+  <style>
+    html, body {
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden; /* zapobiega pionowemu scrollowaniu */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #0a0a23;
+  font-family: 'Courier New', Courier, monospace;
 }
-        .runner-dot {
-            position: absolute;
-            width: 16px;
-            height: 16px;
-            background: radial-gradient(circle, #ff4444, #cc0000);
-            border: 3px solid white;
-            border-radius: 50%;
-            transform: translate(-50%, -50%);
-            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-            z-index: 10;
-            transition: all 0.3s ease;
-        }
-        .runner-dot.pulse {
-            animation: pulse 2s infinite;
-        }
-        @keyframes pulse {
-            0% { transform: translate(-50%, -50%) scale(1); }
-            50% { transform: translate(-50%, -50%) scale(1.3); }
-            100% { transform: translate(-50%, -50%) scale(1); }
-        }
-        .info {
-            display: flex;
-            gap: 20px;
-            margin: 20px 0;
-            flex-wrap: wrap;
-        }
-        .info-item {
-            background: #e8f4fd;
-            padding: 10px 15px;
-            border-radius: 5px;
-            border-left: 4px solid #2196F3;
-        }
-        .info-item strong {
-            color: #1976D2;
-        }
-        .status {
-            font-size: 18px;
-            font-weight: bold;
-            color: #333;
-        }
-        .track-line {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
-        }
-        h1 {
-            color: #333;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        .description {
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 5px;
-            padding: 15px;
-            margin: 20px 0;
-            color: #856404;
-        }
-    </style>
+
+#container {
+  padding: clamp(10px, 3vw, 20px) clamp(15px, 5vw, 40px);
+  width: 90vw;
+  max-width: 1200px;
+  box-sizing: border-box;
+  text-align: center;
+  color: white;
+  background: #0a0a23;
+  position: relative;
+  z-index: 1;
+}
+
+#time, #loop {
+  font-size: clamp(5rem, 10vw, 12rem); /* większa czcionka */
+  margin: 5px 0;
+  white-space: nowrap;
+}
+
+#status {
+  font-size: clamp(2rem, 4vw, 4rem);
+  margin-bottom: 5px;
+}
+#progressBarContainer {
+  background-color: #333;
+  border-radius: 10px;
+  height: 30px; /* trochę wyższy pasek */
+  overflow: hidden;
+}
+#progressBar {
+  height: 100%;
+  background-color: #ffcc00;
+  width: 0%;
+  transition: width 1s;
+}
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+    .pulsing {
+      animation: pulse 1s infinite;
+    }
+    #quote {
+  font-size: clamp(1.5rem, 2.5vw, 3rem);
+  margin-top: 15px;
+  color: #dddddd;
+  white-space: normal;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+#countdownOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  font-size: clamp(10rem, 24vw, 30rem); /* zmiana TU */
+  font-weight: bold;
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  text-shadow: 0 0 30px red;
+  animation: fadeIn 1s ease;
+}
+
+    @keyframes fadeIn {
+      0% { opacity: 0; transform: scale(0.5); }
+      50% { opacity: 1; transform: scale(1.2); }
+      100% { opacity: 1; transform: scale(1); }
+    }
+    .separator {
+      border: none;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.2);
+      margin: 0.5rem 0;
+    }
+#licenseNotice {
+  position: fixed;
+  bottom: 15px;
+  left: 0;
+  width: 100%;
+  font-size: 12px;
+  text-align: center;
+  color: #444444;
+;
+  z-index: 999;
+}
+#licenseNotice a {
+  color: #444444;
+  text-decoration: none;
+}
+#licenseNotice a:hover {
+  text-decoration: underline;
+}
+/* Stylowanie widżetu pogody */
+#weatherWidget {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 15px;
+  font-size: 14px;
+  color: white;
+  min-width: 200px;
+  backdrop-filter: blur(5px);
+  z-index: 998;
+}
+
+#weatherWidget .current-weather {
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+#weatherWidget .weather-title {
+  font-weight: bold;
+  margin-bottom: 5px;
+  color: #ffcc00;
+}
+
+#weatherWidget .weather-data {
+  line-height: 1.4;
+}
+
+#weatherWidget .forecast {
+  font-size: 12px;
+  opacity: 0.9;
+}
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🏃‍♂️ BackYard Ultra Warmia 🏃‍♀️</h1>
-        
-        <div class="description">
-            <strong>Animacja na żywo:</strong> Kropka automatycznie synchronizuje się z czasem rzeczywistym. 
-            Co godzinę o pełnych godzinach (8:00, 9:00, 10:00...) startuje nowa runda. 
-            Bieg trwa 50 minut, następnie 10 minut czekania na mecie.
-        </div>
-
-        <div class="info">
-            <div class="info-item">
-                <strong>Aktualny czas:</strong> <span id="currentTime">--:--</span>
-            </div>
-            <div class="info-item">
-                <strong>Status:</strong> <span id="status" class="status">Ładowanie...</span>
-            </div>
-            <div class="info-item">
-                <strong>Runda:</strong> <span id="roundNumber">-</span>
-            </div>
-            <div class="info-item">
-                <strong>Czas w rundzie:</strong> <span id="roundTime">--:--</span>
-            </div>
-            <div class="info-item">
-                <strong>Postęp trasy:</strong> <span id="progress">-%</span>
-            </div>
-        </div>
-
-        <div class="map-container">
-    <img id="mapImage" src="mapa.jpg" alt="Mapa trasy BackYard Ultra Warmia">
-    <div class="runner-dot" id="runnerDot"></div>
-    <canvas class="track-line" id="trackCanvas"></canvas>
-</div>
+  <div id="container">
+    <div id="status">Ładowanie zegara...</div>
+    <div id="time"></div>
+    <div id="loop"></div>
+    <div id="progressBarContainer">
+      <div id="progressBar"></div>
     </div>
+    <div id="runnersInfo" style="font-size:clamp(1rem, 2.5vw, 3rem); margin-top:10px;"></div>
+    <hr class="separator my-2">
+    <div id="quote" style="font-size:clamp(1rem, 2.5vw, 2.5rem); margin-top:15px; color: white;"></div>
+<div id="distance" style="position: fixed; bottom: 20px; right: 20px; font-size: 0.9em; color: #fff; background: rgba(0,0,0,0.5); padding: 6px 10px; border-radius: 8px; z-index: 999;">
+  Dystans: 0.00 km
+</div>
 
-    <script>
-        // Dane trasy z GPX
-        const trackPoints = [
-            {lat: 53.695350000000005, lon: 20.519170000000003},
-            {lat: 53.695640000000004, lon: 20.51951},
-            {lat: 53.695510000000006, lon: 20.51977},
-            {lat: 53.69543, lon: 20.519840000000002},
-            {lat: 53.69509000000001, lon: 20.521220000000003},
-            {lat: 53.695060000000005, lon: 20.521630000000002},
-            {lat: 53.694860000000006, lon: 20.52248},
-            {lat: 53.69502000000001, lon: 20.52276},
-            {lat: 53.695240000000005, lon: 20.52335},
-            {lat: 53.69523, lon: 20.523590000000002},
-            {lat: 53.69512, lon: 20.5238},
-            {lat: 53.69494, lon: 20.52391},
-            {lat: 53.69485, lon: 20.52411},
-            {lat: 53.69467, lon: 20.524160000000002},
-            {lat: 53.694210000000005, lon: 20.524440000000002},
-            {lat: 53.693670000000004, lon: 20.524990000000003},
-            {lat: 53.69304, lon: 20.52588},
-            {lat: 53.692690000000006, lon: 20.52646},
-            {lat: 53.692220000000006, lon: 20.52689},
-            {lat: 53.691900000000004, lon: 20.526940000000003},
-            {lat: 53.69135000000001, lon: 20.526790000000002},
-            {lat: 53.691340000000004, lon: 20.526780000000002},
-            {lat: 53.690850000000005, lon: 20.526470000000003},
-            {lat: 53.69051, lon: 20.52615},
-            {lat: 53.690180000000005, lon: 20.525070000000003},
-            {lat: 53.68988, lon: 20.52393},
-            {lat: 53.68958000000001, lon: 20.52305},
-            {lat: 53.6895, lon: 20.5228},
-            {lat: 53.68914500312621, lon: 20.521939992861427},
-            {lat: 53.688790000000004, lon: 20.52108},
-            {lat: 53.688545002007835, lon: 20.520394996164885},
-            {lat: 53.688300000000005, lon: 20.519710000000003},
-            {lat: 53.688, lon: 20.51829},
-            {lat: 53.68757, lon: 20.51752},
-            {lat: 53.68695, lon: 20.517020000000002},
-            {lat: 53.68659, lon: 20.51667},
-            {lat: 53.686260000000004, lon: 20.516460000000002},
-            {lat: 53.686020000000006, lon: 20.51621},
-            {lat: 53.685860000000005, lon: 20.5161},
-            {lat: 53.68518, lon: 20.51619},
-            {lat: 53.684450000000005, lon: 20.51619},
-            {lat: 53.68422, lon: 20.51601},
-            {lat: 53.683733341113275, lon: 20.515046644502046},
-            {lat: 53.683246674497155, lon: 20.514083311269136},
-            {lat: 53.68276, lon: 20.51312},
-            {lat: 53.682770000000005, lon: 20.51314},
-            {lat: 53.68260000000001, lon: 20.512240000000002},
-            {lat: 53.682390000000005, lon: 20.511300000000002},
-            {lat: 53.68258, lon: 20.51057},
-            {lat: 53.68309000000001, lon: 20.51004},
-            {lat: 53.6837, lon: 20.508940000000003},
-            {lat: 53.684180000000005, lon: 20.50842},
-            {lat: 53.68487000645806, lon: 20.507540028827332},
-            {lat: 53.68556000646658, lon: 20.50666002881708},
-            {lat: 53.68625, lon: 20.50578},
-            {lat: 53.68674000000001, lon: 20.504530000000003},
-            {lat: 53.68730000307852, lon: 20.50367001143948},
-            {lat: 53.68786000000001, lon: 20.50281},
-            {lat: 53.688050000000004, lon: 20.50233},
-            {lat: 53.68806000000001, lon: 20.50232},
-            {lat: 53.68815000000001, lon: 20.50204},
-            {lat: 53.68815000000001, lon: 20.50194},
-            {lat: 53.688020005277544, lon: 20.500814996589174},
-            {lat: 53.68789, lon: 20.49969},
-            {lat: 53.68791, lon: 20.49903},
-            {lat: 53.68795000000001, lon: 20.498510000000003},
-            {lat: 53.688030000000005, lon: 20.498130000000003},
-            {lat: 53.68816, lon: 20.49772},
-            {lat: 53.68858000098066, lon: 20.497265004410153},
-            {lat: 53.68900000000001, lon: 20.49681},
-            {lat: 53.68919, lon: 20.496730000000003},
-            {lat: 53.689310000000006, lon: 20.496570000000002},
-            {lat: 53.68909000000001, lon: 20.49624},
-            {lat: 53.68898000000001, lon: 20.496000000000002},
-            {lat: 53.68894, lon: 20.49586},
-            {lat: 53.68894, lon: 20.495780000000003},
-            {lat: 53.68898000000001, lon: 20.495620000000002},
-            {lat: 53.68933000152781, lon: 20.49504500453167},
-            {lat: 53.68968, lon: 20.494470000000003},
-            {lat: 53.69001, lon: 20.494120000000002},
-            {lat: 53.690000000000005, lon: 20.494130000000002},
-            {lat: 53.690650000000005, lon: 20.49378},
-            {lat: 53.691010000000006, lon: 20.493720000000003},
-            {lat: 53.691570000000006, lon: 20.49369},
-            {lat: 53.69167, lon: 20.4937},
-            {lat: 53.69180000000001, lon: 20.493630000000003},
-            {lat: 53.69189000000001, lon: 20.49378},
-            {lat: 53.69207, lon: 20.494000000000003},
-            {lat: 53.69249000000001, lon: 20.494390000000003},
-            {lat: 53.692980000000006, lon: 20.495060000000002},
-            {lat: 53.69355, lon: 20.49558},
-            {lat: 53.693830000000005, lon: 20.495900000000002},
-            {lat: 53.69382, lon: 20.495890000000003},
-            {lat: 53.69413, lon: 20.496450000000003},
-            {lat: 53.694810000000004, lon: 20.49724},
-            {lat: 53.69505, lon: 20.49764},
-            {lat: 53.69548, lon: 20.498260000000002},
-            {lat: 53.6959, lon: 20.498720000000002},
-            {lat: 53.69603000000001, lon: 20.49904},
-            {lat: 53.696110000000004, lon: 20.499470000000002},
-            {lat: 53.69624, lon: 20.499950000000002},
-            {lat: 53.696290000000005, lon: 20.500210000000003},
-            {lat: 53.69626, lon: 20.50109},
-            {lat: 53.69633, lon: 20.50214},
-            {lat: 53.696450000000006, lon: 20.502660000000002},
-            {lat: 53.69662, lon: 20.50307},
-            {lat: 53.69702, lon: 20.503800000000002},
-            {lat: 53.69718, lon: 20.50419},
-            {lat: 53.69729, lon: 20.50438},
-            {lat: 53.697430000000004, lon: 20.504540000000002},
-            {lat: 53.69764000000001, lon: 20.504730000000002},
-            {lat: 53.69794, lon: 20.504980000000003},
-            {lat: 53.698240000000006, lon: 20.505170000000003},
-            {lat: 53.69881, lon: 20.50543},
-            {lat: 53.69906, lon: 20.50534},
-            {lat: 53.6993, lon: 20.505360000000003},
-            {lat: 53.699470000000005, lon: 20.505460000000003},
-            {lat: 53.699600000000004, lon: 20.505670000000002},
-            {lat: 53.69961000000001, lon: 20.50569},
-            {lat: 53.699540000000006, lon: 20.50591},
-            {lat: 53.69950000000001, lon: 20.506110000000003},
-            {lat: 53.69952000000001, lon: 20.506330000000002},
-            {lat: 53.699560000000005, lon: 20.50653},
-            {lat: 53.700010000000006, lon: 20.50768},
-            {lat: 53.69971, lon: 20.50805},
-            {lat: 53.69961000000001, lon: 20.508470000000003},
-            {lat: 53.69959000000001, lon: 20.508740000000003},
-            {lat: 53.699470000000005, lon: 20.50881},
-            {lat: 53.69933, lon: 20.50944},
-            {lat: 53.69919, lon: 20.51019},
-            {lat: 53.699215004116176, lon: 20.51118499917092},
-            {lat: 53.69924, lon: 20.51218},
-            {lat: 53.6990950045266, lon: 20.513225003746182},
-            {lat: 53.69895, lon: 20.514270000000003},
-            {lat: 53.69895, lon: 20.514940000000003},
-            {lat: 53.69888, lon: 20.515330000000002},
-            {lat: 53.69881, lon: 20.51557},
-            {lat: 53.69881, lon: 20.51558},
-            {lat: 53.698460000000004, lon: 20.515900000000002},
-            {lat: 53.698330000000006, lon: 20.5162},
-            {lat: 53.69825, lon: 20.5163},
-            {lat: 53.69785, lon: 20.51661},
-            {lat: 53.69756, lon: 20.51687},
-            {lat: 53.697250000000004, lon: 20.516990000000003},
-            {lat: 53.696540000000006, lon: 20.51698},
-            {lat: 53.69646, lon: 20.516900000000003},
-            {lat: 53.696310000000004, lon: 20.5168},
-            {lat: 53.696130000000004, lon: 20.516640000000002},
-            {lat: 53.69595, lon: 20.51661},
-            {lat: 53.695780000000006, lon: 20.51677},
-            {lat: 53.69563, lon: 20.517110000000002},
-            {lat: 53.69523500078555, lon: 20.517570004427643},
-            {lat: 53.694840000000006, lon: 20.518030000000003},
-            {lat: 53.69485, lon: 20.51802},
-            {lat: 53.694810000000004, lon: 20.518250000000002},
-            {lat: 53.69482000000001, lon: 20.51856},
-            {lat: 53.694840000000006, lon: 20.518620000000002},
-            {lat: 53.69501, lon: 20.518780000000003},
-            {lat: 53.6953, lon: 20.51912}
-        ];
+  </div>
+  <div id="countdownOverlay"></div>
+<!-- Widżet pogody -->
+  <div id="weatherWidget">
+    <div class="current-weather">
+      <div class="weather-title">🌤️ Pogoda teraz:</div>
+      <div id="currentWeather" class="weather-data">Ładowanie...</div>
+    </div>
+    <div class="forecast">
+      <div class="weather-title">📊 Prognoza za godzinę:</div>
+      <div id="forecastWeather" class="weather-data">Ładowanie...</div>
+    </div>
+  </div>
 
-        // Elementy DOM
-        const runnerDot = document.getElementById('runnerDot');
-        const canvas = document.getElementById('trackCanvas');
-        const ctx = canvas.getContext('2d');
+  <script>
+    const customStartDate = "2025-08-08T08:00:00";
+    const status = document.getElementById("status");
+    const timeDisplay = document.getElementById("time");
+    const loopDisplay = document.getElementById("loop");
+    const runnersInfo = document.getElementById("runnersInfo");
+    const startDate = new Date(customStartDate);
+    let clockRunning = true;
+
+async function getRunnersStatus() {
+  const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSxKXhg7VChDZffzsmOhR1-vdTRw_XXG6qdesTn4IfkoP8eEkRZGhAk43PxX8pBEmbFvLiKRbL2qBom/pub?output=csv";
+
+  try {
+    const response = await fetch(sheetUrl);
+    const text = await response.text();
+    const rows = text.trim().split("\n");
+    
+    const headers = rows[0].split(",").map(h => h.trim().toLowerCase());
+    const statusColIndex = headers.findIndex(h => h === "status");
+
+    if (statusColIndex === -1) {
+      runnersInfo.textContent = "Nie znaleziono kolumny 'Status'";
+      return;
+    }
+
+const statuses = rows.slice(1).map(r => {
+  const cols = r.split(",");
+  return {
+    name: cols[headers.findIndex(h => h === "zawodnik")],
+    status: cols[statusColIndex]?.trim().toUpperCase()
+  };
+}).filter(r => r.name && r.status); // tylko wiersze z imieniem i statusem
+
+const total = statuses.length;
+const onTrack = statuses.filter(r => r.status === "RUN").length;
+
+
+    if (onTrack === 0) {
+      clockRunning = false;
+      runnersInfo.style.display = "none";
+    } else {
+      clockRunning = true;
+      const now = new Date();
+      if (now >= startDate) {
+        runnersInfo.textContent = `Na trasie: ${onTrack} z ${total} zawodników`;
+        runnersInfo.style.display = "";
+      } else {
+        runnersInfo.style.display = "none";
+      }
+    }
+  } catch (e) {
+    runnersInfo.textContent = "Błąd pobierania danych z arkusza";
+  }
+}
+// Funkcja do pobierania pogody
+async function getWeather() {
+  const lat = 54.024756192760265;
+  const lon = 22.51682318355532;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&hourly=temperature_2m,weather_code&timezone=Europe/Warsaw&forecast_days=1`;
+
+  try {
+    console.log('Pobieranie pogody...'); // Debug
+    const response = await fetch(url);
+    console.log('Odpowiedź:', response.status); // Debug
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Dane pogody:', data); // Debug
+    
+    // Aktualna pogoda
+    const current = data.current;
+    const currentTemp = Math.round(current.temperature_2m);
+    const currentHumidity = current.relative_humidity_2m;
+    const currentWind = Math.round(current.wind_speed_10m);
+    const currentWeatherCode = current.weather_code;
+    
+    // Prognoza za godzinę - poprawione indeksowanie
+    const now = new Date();
+    const currentHourIndex = now.getHours();
+    const nextHourIndex = currentHourIndex + 1;
+    
+    const hourlyTemp = Math.round(data.hourly.temperature_2m[nextHourIndex] || data.hourly.temperature_2m[currentHourIndex]);
+    const hourlyWeatherCode = data.hourly.weather_code[nextHourIndex] || data.hourly.weather_code[currentHourIndex];
+    
+    // Emoji dla kodów pogody
+    const getWeatherEmoji = (code) => {
+      if (code === 0) return "☀️";
+      if (code <= 3) return "⛅";
+      if (code <= 48) return "🌫️";
+      if (code <= 57) return "🌦️";
+      if (code <= 67) return "🌧️";
+      if (code <= 77) return "🌨️";
+      if (code <= 82) return "🌧️";
+      if (code <= 86) return "🌨️";
+      if (code <= 99) return "⛈️";
+      return "🌤️";
+    };
+    
+    // Aktualizacja widżetu
+    document.getElementById('currentWeather').innerHTML = `
+      ${getWeatherEmoji(currentWeatherCode)} ${currentTemp}°C<br>
+      💧 ${currentHumidity}% 💨 ${currentWind} km/h
+    `;
+    
+    document.getElementById('forecastWeather').innerHTML = `
+      ${getWeatherEmoji(hourlyWeatherCode)} ${hourlyTemp}°C
+    `;
+    
+    console.log('Pogoda zaktualizowana pomyślnie'); // Debug
+    
+  } catch (error) {
+    console.error('Błąd pobierania pogody:', error); // Debug
+    document.getElementById('currentWeather').innerHTML = `
+      ❌ Błąd połączenia<br>
+      <small>${error.message}</small>
+    `;
+    document.getElementById('forecastWeather').textContent = "Niedostępne";
+  }
+}
+    const quotes = [
+      "Oddech, krok, pętla – tylko to się teraz liczy.",
+      "Nigdy, nigdy, nigdy, nigdy się nie poddawaj. ~ Winston Churchill",
+      "Kiedy myślisz, że już nie możesz – zrób jeszcze jedno okrążenie.",
+      "Cierpienie minie. Żal z rezygnacji zostaje.",
+      "Twój limit jest dalej niż myślisz.",
+      "Walcz, bo nikt inny tego za ciebie nie zrobi.",
+      "Ból jest stanem przejściowym. Duma pozostaje na zawsze.",
+      "Krew, pot i respekt. Pierwsze dwa dajesz. Ostatnie zdobywasz.",
+      "Wygrywają ci, którzy się nie zatrzymali.",
+      "No pain, no gain.",
+      "Don't think. Run!",
+      "Ciężko? Tym większy szacun.",
+      "Nie ma limitu. Są tylko wymówki.",
+      "Dopóki walczysz, jesteś zwycięzcą. ~ św.Augustyn",
+      "Jeśli przechodzisz przez piekło – nie zatrzymuj się. ~ Winston Churchill",
+      "Lepiej zużywać się niż rdzewieć. ~ Denis Diderot",
+      "Im trudniej, tym większy triumf.",
+      "Zwycięzcy to ci, którzy nie przestali.",
+      "Pętla boli? To znaczy, że żyjesz naprawdę.",
+      "Nie jesteś zrobiony z cukru. Ruszaj.",
+      "Go big or go home. / Albo grubo, albo wcale.",
+      "Push your limits. / Przekraczaj swoje granice.",
+      "Keep calm and carry on. / Spokojnie i do przodu.",
+      "Never give up. / Nigdy się nie poddawaj.",
+      "What doesn't kill you makes you stronger. / Co cię nie zabije, to cię wzmocni.",
+      "Your only limit is you. / Twoim jedynym ograniczeniem jesteś ty.",
+      "Believe you can and you're halfway there. / Uwierz, że możesz, a już jesteś w połowie drogi.",
+      "Be stronger than your excuses. / Bądź silniejszy niż twoje wymówki.",
+      "Silni nie szukają wymówek. Szukają pętli.",
+      "Nie musisz wygrać z innymi. Wystarczy, że nie przegrasz z sobą.",
+    ];
+
+    function showRandomQuote() {
+      const quote = quotes[Math.floor(Math.random() * quotes.length)];
+      document.getElementById("quote").textContent = quote;
+    }
+
+    function updateClock() {
+      const now = new Date();
+      if (!clockRunning) {
+        status.textContent = "Bieg zakończony";
+        timeDisplay.style.display = "none";
+        loopDisplay.style.display = "none";
+        document.getElementById("progressBarContainer").style.display = "none";
+        document.getElementById("quote").style.display = "none";
+        runnersInfo.style.display = "none";
+        document.getElementById("distance").style.display = "none";
+        return;
+      }
+
+      if (now < startDate) {
+        const diff = startDate - now;
+        const totalSecondsToStart = Math.floor(diff / 1000);
+        const days = Math.floor(diff / (24 * 3600000));
+        const hours = Math.floor((diff % (24 * 3600000)) / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+
+        // Odliczanie startowe w ostatnich 10 sekundach
+        const overlay = document.getElementById("countdownOverlay");
+        if (totalSecondsToStart <= 10 && totalSecondsToStart > 0) {
+          overlay.style.display = "flex";
+          overlay.textContent = totalSecondsToStart;
+          overlay.classList.add("fadeIn");
+          setTimeout(() => overlay.classList.remove("fadeIn"), 1000);
+        } else if (totalSecondsToStart === 0) {
+          overlay.style.display = "flex";
+          overlay.textContent = "START!";
+          overlay.classList.add("fadeIn");
+          setTimeout(() => overlay.classList.remove("fadeIn"), 2000);
+        } else {
+          overlay.style.display = "none";
+        }
+
+        status.textContent = "Do startu:";
+        timeDisplay.textContent = `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+        loopDisplay.textContent = "";
+
+        document.getElementById("progressBarContainer").style.display = "none";
+        document.getElementById("quote").style.display = "none";
+        runnersInfo.style.display = "none";
+        document.getElementById("distance").style.display = "none";
+
+      } else {
+        const diff = now - startDate;
+        const totalSeconds = Math.floor(diff / 1000);
+        const hours = Math.floor(totalSeconds / 3600);
+        const minutes = Math.floor((totalSeconds % 3600) / 60);
+        const seconds = totalSeconds % 60;
+
+        status.textContent = "Czas biegu:";
+        timeDisplay.textContent = `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
         
-        // Elementy interfejsu
-        const statusEl = document.getElementById('status');
-        const roundNumberEl = document.getElementById('roundNumber');
-        const roundTimeEl = document.getElementById('roundTime');
-        const progressEl = document.getElementById('progress');
-        const currentTimeEl = document.getElementById('currentTime');
+        const loopCount = Math.floor(totalSeconds / 3600) + 1;
+        loopDisplay.textContent = `Pętla: ${loopCount}`;
 
-        let animationFrame;
+        // Pokaz wszystkie elementy po starcie biegu
+        document.getElementById("progressBarContainer").style.display = "block";
+        document.getElementById("quote").style.display = "block";
+        document.getElementById("distance").style.display = "block";
 
-        // Funkcje mapowania współrzędnych
-        function setupCanvas() {
-            const container = document.querySelector('.map-container');
-            canvas.width = container.offsetWidth;
-            canvas.height = container.offsetHeight;
+        // Progress bar - sekund w aktualnej godzinie
+        const progressBar = document.getElementById("progressBar");
+        const secondsInCurrentHour = totalSeconds % 3600;
+        const progress = (secondsInCurrentHour / 3600) * 100;
+        progressBar.style.width = `${progress}%`;
+
+        // Kolor paska w zależności od czasu
+        if (minutes >= 59) {
+          progressBar.style.backgroundColor = "#cc0000";
+        } else if (minutes >= 58) {
+          progressBar.style.backgroundColor = "#ff3300";
+        } else if (minutes >= 57) {
+          progressBar.style.backgroundColor = "#ff6600";
+        } else {
+          progressBar.style.backgroundColor = "#ffcc00";
         }
 
-        function latLonToPixel(lat, lon) {
-            // Zakres współrzędnych z GPX
-            const minLat = 53.682390000000005;
-            const maxLat = 53.700010000000006;
-            const minLon = 20.493630000000003;
-            const maxLon = 20.526940000000003;
-            
-            // Mapowanie na obszar canvas z marginesem
-            const margin = 50;
-            const width = canvas.width - 2 * margin;
-            const height = canvas.height - 2 * margin;
-            
-            const x = margin + ((lon - minLon) / (maxLon - minLon)) * width;
-            const y = margin + height - ((lat - minLat) / (maxLat - minLat)) * height;
-            
-            return { x, y };
+        // Migotanie na ostatnie 30 sek
+        if (minutes === 59 && seconds >= 30) {
+          progressBar.classList.add("pulsing");
+        } else {
+          progressBar.classList.remove("pulsing");
         }
 
-        function drawTrack() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Rysuj trasę
-            ctx.strokeStyle = '#ff6600';
-            ctx.lineWidth = 4;
-            ctx.setLineDash([]);
-            ctx.beginPath();
-            
-            trackPoints.forEach((point, index) => {
-                const pixel = latLonToPixel(point.lat, point.lon);
-                if (index === 0) {
-                    ctx.moveTo(pixel.x, pixel.y);
-                } else {
-                    ctx.lineTo(pixel.x, pixel.y);
-                }
-            });
-            
-            ctx.stroke();
-            
-            // Zaznacz start/metę na początku trasy (tam gdzie kropka startuje)
-            const startPixel = latLonToPixel(trackPoints[0].lat, trackPoints[0].lon);
-            ctx.fillStyle = '#ff4444';
-            ctx.beginPath();
-            ctx.arc(startPixel.x, startPixel.y, 8, 0, 2 * Math.PI);
-            ctx.fill();
-            
-            // Biała ramka wokół startu
-            ctx.strokeStyle = 'white';
-            ctx.lineWidth = 2;
-            ctx.stroke();
+        // Dystans
+        const distanceKm = (loopCount * 6.706).toFixed(2);
+        document.getElementById("distance").textContent = `Dystans: ${distanceKm} km`;
+
+        // Odliczanie - poprawione dla wszystkich pętli
+        const overlay = document.getElementById("countdownOverlay");
+        
+        // Odliczanie w ostatnich 10 sekundach każdej godziny
+        if (minutes === 59 && seconds >= 50) {
+          const countdown = 60 - seconds;
+          overlay.style.display = "flex";
+          overlay.textContent = countdown;
+          overlay.classList.add("fadeIn");
+          setTimeout(() => overlay.classList.remove("fadeIn"), 1000);
         }
-
-        function updateRunnerPosition(progress) {
-            if (progress >= 1) progress = 0.999; // Zapobiega wykroczeniu poza trasę
-            
-            const pointIndex = progress * (trackPoints.length - 1);
-            const index = Math.floor(pointIndex);
-            const fraction = pointIndex - index;
-            
-            const currentPoint = trackPoints[index];
-            const nextPoint = trackPoints[Math.min(index + 1, trackPoints.length - 1)];
-            
-            // Interpolacja między punktami
-            const lat = currentPoint.lat + (nextPoint.lat - currentPoint.lat) * fraction;
-            const lon = currentPoint.lon + (nextPoint.lon - currentPoint.lon) * fraction;
-            
-            const pixel = latLonToPixel(lat, lon);
-            
-            runnerDot.style.left = pixel.x + 'px';
-            runnerDot.style.top = pixel.y + 'px';
-            runnerDot.style.display = 'block';
+        // START! na początku każdej godziny (0:00, 1:00, 2:00, itd.)
+        else if (minutes === 0 && seconds <= 2) {
+          overlay.style.display = "flex";
+          overlay.textContent = "START!";
+          overlay.classList.add("fadeIn");
+          setTimeout(() => overlay.classList.remove("fadeIn"), 2000);
+        } else {
+          overlay.style.display = "none";
         }
+      }
+    }
 
-        function formatTime(seconds) {
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-        }
+    // Inicjalizacja
+    getRunnersStatus();
+    showRandomQuote();
+    updateClock();
+    
+    // Interwały
+    setInterval(updateClock, 1000);
+    setInterval(getRunnersStatus, 60000);
+    setInterval(showRandomQuote, 900000);
+  </script>
+<!-- Przycisk pełnego ekranu -->
+<button id="fullscreenBtn" title="Pełny ekran" style="
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 9999;
+  color: white;
+  font-size: 1.8em;
+">
+  ⛶
+</button>
 
-        function updateDisplay() {
-            const now = new Date();
-            
-            // Wyświetl aktualny czas
-            const timeString = now.toLocaleTimeString('pl-PL', { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                second: '2-digit'
-            });
-            currentTimeEl.textContent = timeString;
-            
-            // Oblicz minuty od pełnej godziny
-            const minutesFromHour = now.getMinutes();
-            const secondsFromHour = now.getSeconds();
-            const totalSecondsFromHour = minutesFromHour * 60 + secondsFromHour;
-            
-            // Każda runda trwa 60 minut: 50 min biegu + 10 min przerwy  
-            const runDurationSeconds = 50 * 60;   // 50 minut w sekundach
-            const waitDurationSeconds = 10 * 60;  // 10 minut w sekundach
-            
-            // Aktualny numer rundy (od startu dnia)
-            const roundsSinceStart = Math.floor(now.getHours()) + 1;
-            roundNumberEl.textContent = roundsSinceStart;
-            
-            if (totalSecondsFromHour < runDurationSeconds) {
-                // Faza biegu (0-50 minut)
-                const runProgress = totalSecondsFromHour / runDurationSeconds;
-                updateRunnerPosition(runProgress);
-                statusEl.textContent = "Biegnie! 🏃‍♂️";
-                runnerDot.classList.remove('pulse');
-                progressEl.textContent = Math.round(runProgress * 100) + '%';
-                
-                // Pokaż czas w rundzie
-                const timeInRun = formatTime(totalSecondsFromHour);
-                roundTimeEl.textContent = timeInRun;
-                
-            } else {
-                // Faza oczekiwania na mecie (50-60 minut)
-                updateRunnerPosition(0); // Pozycja startu/mety
-                statusEl.textContent = "Czeka na mecie ⏰";
-                runnerDot.classList.add('pulse');
-                progressEl.textContent = "100% - Czeka";
-                
-                // Pokaż czas oczekiwania
-                const waitTime = totalSecondsFromHour - runDurationSeconds;
-                const timeInWait = formatTime(waitTime);
-                roundTimeEl.textContent = "Czeka: " + timeInWait;
-            }
-            
-            animationFrame = requestAnimationFrame(updateDisplay);
-        }
+<script>
+  const fullscreenBtn = document.getElementById('fullscreenBtn');
 
-        // Obsługa zmiany rozmiaru okna
-        window.addEventListener('resize', () => {
-            setupCanvas();
-            drawTrack();
-        });
+  fullscreenBtn.addEventListener('click', () => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        alert(`Błąd pełnego ekranu: ${err.message}`);
+      });
+    } else {
+      document.exitFullscreen();
+    }
+  });
 
-        // Inicjalizacja
-        window.addEventListener('load', () => {
-            setupCanvas();
-            drawTrack();
-            updateDisplay();
-        });
-    </script>
+  document.addEventListener('fullscreenchange', () => {
+    if (document.fullscreenElement) {
+      fullscreenBtn.textContent = '🞬'; // Ikona wyjścia z pełnego ekranu
+    } else {
+      fullscreenBtn.textContent = '⛶'; // Ikona wejścia w pełny ekran
+    }
+  });
+</script>
+<div id="licenseNotice" style="font-size: 12px; text-align: center; margin-top: 20px; color: #444444;">
+  <a href="https://creativecommons.org/licenses/by-nc-nd/4.0/" target="_blank">
+    CC BY-NC-ND 4.0
+  </a> | 
+  <a href="https://sites.google.com/view/projectultra/contact" target="_blank">
+    © 2025 | tinyurl.com/project-ultra
+  </a>
+</div>
 </body>
 </html>
